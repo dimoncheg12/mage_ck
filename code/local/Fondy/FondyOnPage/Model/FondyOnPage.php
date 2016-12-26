@@ -27,12 +27,13 @@ class Fondy_FondyOnPage_Model_FondyOnPage extends Mage_Payment_Model_Method_Abst
     {  
         $order_id = $this->getCheckout()->getLastRealOrderId();
         $order = Mage::getModel('sales/order')->loadByIncrementId($order_id);
-        $amount = round($order->getGrandTotal(), 2);
-
+        $amount = round($order->getGrandTotal(), 2);  
+		
         $customer = Mage::getSingleton('customer/session')->getCustomer();
         $checkout = Mage::getSingleton('checkout/session')->getCustomer();
         $quote = Mage::getSingleton('checkout/session')->getQuote();
         $email = $customer->getEmail();
+
         $email = isset($email) ? $email : $quote->getBillingAddress()->getEmail();
         $email = isset($email) ? $email : $order->getCustomerEmail();
         $back = Mage::getUrl('FondyOnPage/response', array('_secure' => true));
@@ -47,7 +48,21 @@ class Fondy_FondyOnPage_Model_FondyOnPage extends Mage_Payment_Model_Method_Abst
             'lang' => $this->getConfigData('language'),
             'sender_email' => $email
 			);
+		$items = $order->getAllVisibleItems();
+		foreach($items as $i){		
+				$price = Mage::helper('tax')->getPrice($i->getProduct(), $i->getProduct()->getFinalPrice(), true);
+				$merchant =  Mage::getResourceModel('catalog/product')->getAttributeRawValue($i->getProductId(), 'merchantid');
+				if (empty($merchant))
+					$merchant = $this->getConfigData('merchant');
+				$new_price = round($price * 100 * $i->getQtyOrdered());
 				$data['receiver'][] = array(
+				"requisites" => array(
+							"amount" => $new_price,
+							"merchant_id" => $merchant
+								),
+				"type" => "merchant");
+		}
+				/*$data['receiver'][] = array(
 				"requisites" => array(
 					 "amount" => 100,
 					 "merchant_id" =>  500001
@@ -58,7 +73,8 @@ class Fondy_FondyOnPage_Model_FondyOnPage extends Mage_Payment_Model_Method_Abst
 					 "amount" => 100,
 					 "merchant_id" =>  600001
 					 ),
-				"type" => "merchant");
+				"type" => "merchant");*/
+		//print_r ($data);die;
 		$fields = [
 		"version" => "2.0",
 		"data" => base64_encode(json_encode(array('order' => $data))),
